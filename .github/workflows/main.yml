@@ -1,49 +1,29 @@
-name: Build UID- Module
-
+name: Build UID Module
 on:
   workflow_dispatch:
   push:
-
 permissions:
   contents: write
-
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Download and Setup NDK 27.3.13750724
+      - uses: actions/checkout@v4
+      - name: Setup NDK and Build
         run: |
           mkdir -p "$HOME/android-sdk/ndk"
-          curl -L https://dl.google.com/android/repository/android-ndk-r27d-linux.zip -o ndk.zip
+          curl -sL https://dl.google.com/android/repository/android-ndk-r27d-linux.zip -o ndk.zip
           unzip -q ndk.zip
           mv android-ndk-r27d "$HOME/android-sdk/ndk/27.3.13750724"
           rm ndk.zip
-          echo "ANDROID_SDK_ROOT=$HOME/android-sdk" >> $GITHUB_ENV
-          echo "ANDROID_NDK_HOME=$HOME/android-sdk/ndk/27.3.13750724" >> $GITHUB_ENV
-          echo "ANDROID_NDK_ROOT=$HOME/android-sdk/ndk/27.3.13750724" >> $GITHUB_ENV
-
-      - name: Build Module Zip
-        run: |
+          export ANDROID_SDK_ROOT="$HOME/android-sdk"
+          export ANDROID_NDK_HOME="$HOME/android-sdk/ndk/27.3.13750724"
+          export ANDROID_NDK_ROOT="$HOME/android-sdk/ndk/27.3.13750724"
           python3 tools/uid-seccomp-module/build.py --module-only
-          mkdir -p module_unpacked
-          MODULE_ZIP=$(find . -name "*.zip" | head -n 1)
-          echo "MODULE_ZIP=$MODULE_ZIP" >> $GITHUB_ENV
-          unzip -q "$MODULE_ZIP" -d module_unpacked
-
-      - name: Upload Direct-Flashable Artifact (No nested zip)
-        uses: actions/upload-artifact@v4
-        with:
-          name: UID-Filter-Flashable
-          path: module_unpacked/*
-          include-hidden-files: true
-
-      - name: Publish to GitHub Releases (Direct .zip link)
+      - name: Publish Release Zip
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.0-${{ github.run_number }}
-          name: "UID Filter Build #${{ github.run_number }}"
-          files: ${{ env.MODULE
-          _ZIP }}
+          tag_name: v1.0.${{ github.run_number }}
+          name: Release v1.0.${{ github.run_number }}
+          files: "**/*.zip"
+          
