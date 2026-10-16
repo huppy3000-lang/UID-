@@ -1,20 +1,41 @@
 name: Build UID- Module
-on: [workflow_dispatch, push]
+
+on:
+  workflow_dispatch:
+  push:
+
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Install NDK 27.3.13750724
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download and Setup NDK 27.3.13750724
         run: |
-          yes | ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --install "ndk;27.3.13750724"
+          mkdir -p "$HOME/android-sdk/ndk"
+          curl -L https://dl.google.com/android/repository/android-ndk-r27d-linux.zip -o ndk.zip
+          unzip -q ndk.zip
+          mv android-ndk-r27d "$HOME/android-sdk/ndk/27.3.13750724"
+          rm ndk.zip
+          echo "ANDROID_SDK_ROOT=$HOME/android-sdk" >> $GITHUB_ENV
+          echo "ANDROID_NDK_HOME=$HOME/android-sdk/ndk/27.3.13750724" >> $GITHUB_ENV
+          echo "ANDROID_NDK_ROOT=$HOME/android-sdk/ndk/27.3.13750724" >> $GITHUB_ENV
+
       - name: Build Module Zip
-        env:
-          ANDROID_SDK_ROOT: ${{ env.ANDROID_HOME }}
-          ANDROID_NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/27.3.13750724
-        run: python3 tools/uid-seccomp-module/build.py --module-only
-      - name: Upload Zip Artifact
+        run: |
+          python3 tools/uid-seccomp-module/build.py --module-only
+          mkdir -p module_unpacked
+          MODULE_ZIP=$(find . -name "*.zip" | head -n 1)
+          echo "MODULE_ZIP=$MODULE_ZIP" >> $GITHUB_ENV
+          unzip -q "$MODULE_ZIP" -d module_unpacked
+
+      - name: Upload Direct-Flashable Artifact (No nested zip)
         uses: actions/upload-artifact@v4
         with:
-          name: UID-Filter-Module
-          path: "**/*.zip"
+          name: UID-Filter-Flashable
+          path: module_unpacked/*
+          include-hidden-
