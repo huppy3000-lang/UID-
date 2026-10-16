@@ -1,0 +1,20 @@
+name: Build UID- Module
+on: [workflow_dispatch, push]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install NDK 27.3.13750724
+        run: |
+          yes | ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --install "ndk;27.3.13750724"
+      - name: Build Module Zip
+        env:
+          ANDROID_SDK_ROOT: ${{ env.ANDROID_HOME }}
+          ANDROID_NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/27.3.13750724
+        run: python3 tools/uid-seccomp-module/build.py --module-only
+      - name: Upload Zip Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: UID-Filter-Module
+          path: "**/*.zip"
